@@ -1,15 +1,23 @@
-import { Button } from "@/components/ui/button-variants";
-import { MessageSquare, Crown, User, Menu, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MessageSquare, User, Menu, X, LogOut } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate, Link } from "react-router-dom";
 
-interface HeaderProps {
-  onSignIn: () => void;
-  onGetStarted: () => void;
-}
-
-export const Header = ({ onSignIn, onGetStarted }: HeaderProps) => {
+export const Header = () => {
+  const { currentUser, logout } = useAuth();
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Failed to log out', error);
+    }
+  };
   
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/20 backdrop-blur-xl">
@@ -27,74 +35,151 @@ export const Header = ({ onSignIn, onGetStarted }: HeaderProps) => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
-            <a href="/#features" className="text-muted-foreground hover:text-foreground transition-smooth">
+            <Link to="/#features" className="text-muted-foreground hover:text-foreground transition-smooth">
               Features
-            </a>
-            <a href="/pricing" className="text-muted-foreground hover:text-foreground transition-smooth">
+            </Link>
+            <Link to="/pricing" className="text-muted-foreground hover:text-foreground transition-smooth">
               Pricing
-            </a>
-            <a href="/referrals" className="text-muted-foreground hover:text-foreground transition-smooth">
+            </Link>
+            <Link to="/referrals" className="text-muted-foreground hover:text-foreground transition-smooth">
               Referrals
-            </a>
+            </Link>
+            {currentUser && (
+              <Link to="/dashboard" className="text-muted-foreground hover:text-foreground transition-smooth">
+                Dashboard
+              </Link>
+            )}
           </nav>
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center space-x-3">
             <ThemeToggle />
-            <Button variant="ghost" size="sm" onClick={onSignIn}>
-              Sign In
-            </Button>
-            <Button variant="hero" size="sm" onClick={onGetStarted}>
-              Get Started
-            </Button>
+            {currentUser ? (
+              <>
+                <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
+                  Dashboard
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => navigate('/profile')}>
+                  <User className="w-4 h-4 mr-2" />
+                  Profile
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleLogout}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>
+                  Sign In
+                </Button>
+                <Button variant="default" size="sm" onClick={() => navigate('/signup')} className="bg-primary hover:bg-primary/90">
+                  Get Started
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="relative z-50 md:hidden"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
-            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </Button>
         </div>
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden animate-slide-up">
-            <div className="px-2 pt-2 pb-3 space-y-1 bg-card/95 rounded-lg mt-2 border border-border/20">
-              <a
-                href="/#features"
-                className="block px-3 py-2 text-base text-muted-foreground hover:text-foreground transition-smooth"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Features
-              </a>
-              <a
-                href="/pricing"
-                className="block px-3 py-2 text-base text-muted-foreground hover:text-foreground transition-smooth"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Pricing
-              </a>
-              <a
-                href="/referrals"
-                className="block px-3 py-2 text-base text-muted-foreground hover:text-foreground transition-smooth"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Referrals
-              </a>
-              <div className="flex flex-col space-y-2 px-3 py-2">
-                <div className="flex justify-center py-2">
-                  <ThemeToggle />
+          <div className="fixed inset-0 bg-pink backdrop-blur-sm z-40 pt-16">
+            <div className="container mx-auto px-4 py-6 space-y-6">
+              <nav className="flex flex-col space-y-4">
+                <Link
+                  to="/#features"
+                  className="text-lg py-2 px-4 rounded-lg hover:bg-accent transition-smooth block"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Features
+                </Link>
+                <Link
+                  to="/pricing"
+                  className="text-lg py-2 px-4 rounded-lg hover:bg-accent transition-smooth block"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Pricing
+                </Link>
+                <Link
+                  to="/referrals"
+                  className="text-lg py-2 px-4 rounded-lg hover:bg-accent transition-smooth block"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Referrals
+                </Link>
+                {currentUser && (
+                  <Link
+                    to="/dashboard"
+                    className="text-lg py-2 px-4 rounded-lg hover:bg-accent transition-smooth block"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                )}
+                {currentUser && (
+                  <Link
+                    to="/profile"
+                    className="text-lg py-2 px-4 rounded-lg hover:bg-accent transition-smooth block"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Profile
+                  </Link>
+                )}
+              </nav>
+
+              <div className="pt-4 border-t border-border/20">
+                <div className="flex flex-col space-y-3">
+                  {currentUser ? (
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="w-full"
+                      onClick={async () => {
+                        await logout();
+                        setIsMenuOpen(false);
+                        navigate('/');
+                      }}
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        className="w-full"
+                        onClick={() => {
+                          navigate('/login');
+                          setIsMenuOpen(false);
+                        }}
+                      >
+                        Sign In
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="lg"
+                        className="w-full bg-primary hover:bg-primary/90"
+                        onClick={() => {
+                          navigate('/signup');
+                          setIsMenuOpen(false);
+                        }}
+                      >
+                        Get Started
+                      </Button>
+                    </>
+                  )}
                 </div>
-                <Button variant="ghost" size="sm" className="w-full" onClick={onSignIn}>
-                  Sign In
-                </Button>
-                <Button variant="hero" size="sm" className="w-full" onClick={onGetStarted}>
-                  Get Started
-                </Button>
               </div>
             </div>
           </div>

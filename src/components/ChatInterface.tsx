@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button-variants";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Send, Image, Sparkles, Copy, RefreshCw, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { API_URL } from "@/config";
+import { getAuthToken } from "@/services/auth.service";
 
 interface Message {
   id: string;
@@ -20,6 +22,9 @@ export const ChatInterface = () => {
   const [inputMessage, setInputMessage] = useState("");
   const [selectedStyle, setSelectedStyle] = useState("smooth");
   const [isLoading, setIsLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageData, setImageData] = useState<{ base64: string; type: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { toast } = useToast();
 
   const messageStyles = [
@@ -41,21 +46,61 @@ export const ChatInterface = () => {
 
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
+    try {
+      const token = await getAuthToken();
+      if (!token) {
+        toast({ title: "Not authenticated", description: "Please sign in to chat", variant: "destructive" });
+        setIsLoading(false);
+        return;
+      }
 
-    // Simulate AI response (replace with actual AI integration)
-    setTimeout(() => {
+      const payload: any = {
+        message: inputMessage,
+        style: selectedStyle,
+      };
+      if (imageData) {
+        payload.imageBase64 = imageData.base64;
+        payload.imageType = imageData.type;
+      }
+
+      const resp = await fetch(`${API_URL}/chat/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        if (err?.code === 'MESSAGE_LIMIT_REACHED') {
+          toast({ title: 'Limit reached', description: 'You have reached your free message limit. Upgrade to continue.', variant: 'destructive' });
+        } else {
+          toast({ title: 'Error', description: err.message || 'Failed to generate response', variant: 'destructive' });
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      const data = await resp.json();
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        type: "ai",
-        content: generateRizzLine(inputMessage, selectedStyle),
+        type: 'ai',
+        content: data.message,
         timestamp: new Date(),
         style: selectedStyle
       };
       setMessages(prev => [...prev, aiMessage]);
+    } catch (e: any) {
+      console.error('Send message error:', e);
+      toast({ title: 'Error', description: e.message || 'Unexpected error', variant: 'destructive' });
+    } finally {
       setIsLoading(false);
-    }, 2000);
-
-    setInputMessage("");
+      setInputMessage('');
+    }
   };
 
   const generateRizzLine = (input: string, style: string) => {
@@ -75,6 +120,32 @@ export const ChatInterface = () => {
       title: "Copied!",
       description: "Rizz line copied to clipboard",
     });
+  };
+
+  const onUploadClick = () => fileInputRef.current?.click();
+
+  const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(',')[1] || '');
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid file', description: 'Please upload an image file', variant: 'destructive' });
+      return;
+    }
+    try {
+      const base64 = await toBase64(file);
+      setImageData({ base64, type: file.type });
+      setImagePreview(URL.createObjectURL(file));
+      toast({ title: 'Screenshot attached', description: 'We will use it to craft a better reply.' });
+    } catch (err) {
+      toast({ title: 'Upload failed', description: 'Could not read the image', variant: 'destructive' });
+    }
   };
 
   return (
@@ -175,10 +246,16 @@ export const ChatInterface = () => {
                   }}
                 />
                 <div className="flex items-center justify-between">
-                  <Button variant="ghost" size="sm" className="text-muted-foreground">
-                    <Image className="w-4 h-4 mr-2" />
-                    Upload Screenshot
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                    <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={onUploadClick}>
+                      <Image className="w-4 h-4 mr-2" />
+                      {imagePreview ? 'Change Screenshot' : 'Upload Screenshot'}
+                    </Button>
+                    {imagePreview && (
+                      <img src={imagePreview} alt="screenshot preview" className="h-10 w-10 rounded object-cover border border-border/40" />
+                    )}
+                  </div>
                   <Button 
                     variant="hero" 
                     size="sm"

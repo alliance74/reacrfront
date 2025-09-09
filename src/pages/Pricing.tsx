@@ -1,39 +1,50 @@
-import { useState } from "react";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Crown, Zap, Star } from "lucide-react";
+import { Check, Crown, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { subscribeToPlan, getSubscriptionPlans, SubscriptionPlan, CurrentSubscription } from "@/services/subscription.service";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Pricing = () => {
-  const [selectedPlan, setSelectedPlan] = useState<"free" | "premium">("premium");
+  const [loading, setLoading] = useState<{[key: string]: boolean}>({});
+  const [plansData, setPlansData] = useState<SubscriptionPlan[]>([]);
+  const [currentPlan, setCurrentPlan] = useState<CurrentSubscription | null>(null);
   const { toast } = useToast();
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
 
-  const plans = [
+  // Default plans in case API fails
+  const defaultPlans: SubscriptionPlan[] = [
     {
       id: "free",
       name: "Free Plan",
-      price: "$0",
-      period: "/forever",
+      price: 0,
       description: "Perfect for trying out RizzChat",
+      billingCycle: 'monthly',
       features: [
         "10 AI-generated responses",
         "4 response styles",
         "Basic chat interface",
         "Community support"
       ],
-      buttonText: "Get Started Free",
-      popular: false
+      credits: 10,
+      limits: {
+        messages: 10,
+        responseStyles: 4
+      },
+      stripe: {
+        priceId: 'price_free'
+      }
     },
     {
       id: "premium",
       name: "Premium Plan",
-      price: "$9.99",
-      originalPrice: "$20",
-      period: "/month",
+      price: 9.99,
       description: "Unlimited rizz for serious charmers",
+      billingCycle: 'monthly',
       features: [
         "Unlimited AI responses",
         "All 4 response styles",
@@ -44,34 +55,111 @@ const Pricing = () => {
         "Early access to new features",
         "Referral earnings program"
       ],
-      buttonText: "Start Premium",
-      popular: true
+      credits: -1, // -1 for unlimited
+      limits: {
+        messages: -1, // -1 for unlimited
+        responseStyles: -1
+      },
+      stripe: {
+        priceId: import.meta.env.VITE_STRIPE_PREMIUM_PRICE_ID
+      }
     }
   ];
+  
+  // Helper function to format price for display
+  const formatPrice = (price: number) => {
+    return price === -1 ? 'Unlimited' : `$${price.toFixed(2)}`;
+  };
 
-  const handleSubscribe = (planId: string) => {
-    // Mock payment processing
-    toast({
-      title: "Payment Processing",
-      description: `Redirecting to payment for ${planId} plan...`,
-    });
-    
-    // Simulate redirect to Stripe checkout
-    setTimeout(() => {
+  // Fetch plans from the server
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const { plans, currentPlan } = await getSubscriptionPlans();
+        setPlansData(plans);
+        if (currentPlan) {
+          setCurrentPlan(currentPlan);
+        }
+      } catch (error) {
+        console.error('Failed to fetch plans:', error);
+        setPlansData(defaultPlans);
+      }
+    };
+
+    fetchPlans();
+  }, []);
+
+  // Use server plans or fallback to default
+  const plans = plansData.length > 0 ? plansData : defaultPlans;
+  
+  // Add display properties to plans
+  const plansWithDisplayProps = plans.map(plan => ({
+    ...plan,
+    displayPrice: formatPrice(plan.price),
+    displayPeriod: plan.billingCycle === 'monthly' ? '/month' : '/year',
+    isPopular: plan.id === 'premium',
+    buttonText: plan.id === 'free' ? 'Get Started Free' : 'Start Premium',
+    showDiscount: plan.id === 'premium' && plan.billingCycle === 'monthly'
+  }));
+
+  const handleSubscribe = async (planId: string) => {
+    if (!currentUser) {
+      navigate('/login', { state: { from: '/pricing' } });
+      return;
+    }
+
+    setLoading(prev => ({ ...prev, [planId]: true }));
+
+    try {
+      toast({
+        title: "Processing...",
+        description: `Setting up your ${planId} subscription...`,
+      });
+
+      await subscribeToPlan(planId);
+      
       toast({
         title: "Success!",
-        description: "Payment completed successfully!",
+        description: `You've successfully subscribed to the ${planId} plan!`,
       });
-    }, 2000);
+      
+      // Refresh the page to show updated subscription status
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Subscription error:', error);
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to process subscription. Please try again.',
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, [planId]: false }));
+    }
+  };
+
+  const getButtonText = (planId: string, defaultText: string) => {
+    if (loading[planId]) {
+      return (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Processing...
+        </>
+      );
+    }
+    
+    if (currentPlan?.planId === planId) {
+      return 'Current Plan';
+    }
+    
+    return defaultText;
+  };
+
+  const isCurrentPlan = (planId: string) => {
+    return currentPlan?.planId === planId;
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <Header 
-        onSignIn={() => {}} 
-        onGetStarted={() => {}}
-      />
-      
       <div className="pt-20 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
@@ -86,14 +174,14 @@ const Pricing = () => {
 
           {/* Pricing Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-4xl mx-auto mb-12">
-            {plans.map((plan) => (
+            {plansWithDisplayProps.map((plan) => (
               <Card 
                 key={plan.id}
                 className={`relative glass hover-lift transition-smooth ${
-                  plan.popular ? 'ring-2 ring-primary shadow-glow' : ''
+                  plan.isPopular ? 'ring-2 ring-primary shadow-glow' : ''
                 }`}
               >
-                {plan.popular && (
+                {plan.isPopular && (
                   <Badge 
                     className="absolute -top-3 left-1/2 transform -translate-x-1/2 gradient-primary text-primary-foreground"
                   >
@@ -108,18 +196,18 @@ const Pricing = () => {
                   </CardTitle>
                   <div className="flex items-baseline justify-center gap-2">
                     <span className="text-4xl font-bold text-primary">
-                      {plan.price}
+                      {plan.displayPrice}
                     </span>
-                    {plan.originalPrice && (
+                    {plan.price > 0 && plan.billingCycle === 'monthly' && (
                       <span className="text-lg text-muted-foreground line-through">
-                        {plan.originalPrice}
+                        ${(plan.price * 2).toFixed(2)}
                       </span>
                     )}
                     <span className="text-muted-foreground">
-                      {plan.period}
+                      {plan.displayPeriod}
                     </span>
                   </div>
-                  {plan.originalPrice && (
+                  {plan.showDiscount && (
                     <Badge variant="secondary" className="mx-auto mt-2">
                       50% OFF Launch Sale!
                     </Badge>
@@ -141,13 +229,14 @@ const Pricing = () => {
 
                   <Button 
                     className={`w-full ${
-                      plan.popular 
+                      plan.isPopular 
                         ? 'gradient-primary text-primary-foreground hover-lift' 
                         : 'variant-outline'
-                    }`}
+                    } ${isCurrentPlan(plan.id) ? 'bg-muted hover:bg-muted cursor-default' : ''}`}
                     onClick={() => handleSubscribe(plan.id)}
+                    disabled={isCurrentPlan(plan.id) || loading[plan.id]}
                   >
-                    {plan.buttonText}
+                    {getButtonText(plan.id, plan.buttonText || 'Subscribe')}
                   </Button>
                 </CardContent>
               </Card>
@@ -194,8 +283,6 @@ const Pricing = () => {
           </div>
         </div>
       </div>
-      
-      <Footer />
     </div>
   );
 };

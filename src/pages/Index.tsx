@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { Header } from "@/components/Header";
 import { LandingPage } from "@/components/LandingPage";
 import { ChatInterface } from "@/components/ChatInterface";
 import { AuthModal } from "@/components/AuthModal";
-import { Footer } from "@/components/Footer";
 
 const Index = () => {
   const [currentView, setCurrentView] = useState<"landing" | "chat">("landing");
@@ -33,8 +31,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen">
-      <Header onSignIn={handleSignIn} onGetStarted={handleGetStarted} />
-      
       {currentView === "landing" ? (
         <LandingPage onGetStarted={handleGetStarted} />
       ) : (
@@ -47,7 +43,6 @@ const Index = () => {
         defaultTab={authModalTab}
       />
       
-      {currentView === "landing" && <Footer />}
     </div>
   );
 };

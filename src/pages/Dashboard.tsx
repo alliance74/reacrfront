@@ -1,38 +1,33 @@
-import { useState } from "react";
-import { Header } from "@/components/Header";
+import { useMemo } from "react";
 import { ChatInterface } from "@/components/ChatInterface";
-import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Crown, TrendingUp, Clock } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 
 const Dashboard = () => {
-  // Mock user data
-  const [user] = useState({
-    name: "Alex Johnson",
-    email: "alex@example.com",
-    plan: "Premium",
-    messagesUsed: 45,
-    messagesLimit: 1000,
-    referrals: 12,
-    earnings: 24.00
-  });
+  const { currentUser } = useAuth();
+  const { subscription, isLoading: subLoading, refreshSubscription } = useSubscription();
 
-  const mockStats = [
-    { label: "Messages Used", value: `${user.messagesUsed}/${user.messagesLimit}`, icon: MessageSquare, color: "text-primary" },
-    { label: "Success Rate", value: "94%", icon: TrendingUp, color: "text-success" },
-    { label: "Referrals", value: user.referrals.toString(), icon: Crown, color: "text-warning" },
-    { label: "This Month", value: "$" + user.earnings.toFixed(2), icon: Clock, color: "text-accent" }
-  ];
+  const planName = subscription?.planName || (subscription?.planId === 'free' ? 'Free' : 'Premium');
+  const isFree = subscription?.isFree ?? true;
+  const isActive = subscription?.isActive ?? true;
+  const messagesLimit = subscription?.maxMessages ?? (isFree ? 10 : -1);
+  const usedMessages = subscription?.usedMessages ?? 0;
+  const remaining = subscription?.remainingMessages ?? (isFree ? Math.max(0, (messagesLimit || 0) - usedMessages) : undefined);
+
+  const stats = useMemo(() => [
+    { label: 'Messages Used', value: isFree ? `${usedMessages}/${messagesLimit}` : 'Unlimited', icon: MessageSquare, color: 'text-primary' },
+    // Placeholder analytics; you can wire real data later
+    { label: 'Success Rate', value: '—', icon: TrendingUp, color: 'text-success' },
+    { label: 'Plan Status', value: isActive ? 'Active' : 'Inactive', icon: Crown, color: isActive ? 'text-success' : 'text-warning' },
+    { label: 'Next Renewal', value: subscription?.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).toLocaleDateString() : '—', icon: Clock, color: 'text-accent' }
+  ], [isFree, usedMessages, messagesLimit, isActive, subscription?.currentPeriodEnd]);
 
   return (
     <div className="min-h-screen bg-background">
-      <Header 
-        onSignIn={() => {}} 
-        onGetStarted={() => {}}
-      />
-      
       <div className="pt-20 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Welcome Section */}
@@ -40,7 +35,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <h1 className="text-3xl font-bold text-foreground">
-                  Welcome back, {user.name}! 👋
+                  Welcome back, {currentUser?.displayName || currentUser?.email || 'Friend'}! 👋
                 </h1>
                 <p className="text-muted-foreground mt-2">
                   Ready to level up your chat game?
@@ -48,14 +43,14 @@ const Dashboard = () => {
               </div>
               <Badge variant="secondary" className="gradient-primary text-primary-foreground">
                 <Crown className="w-4 h-4 mr-1" />
-                {user.plan} Plan
+                {planName} {isActive ? 'Plan' : '(Inactive)'}
               </Badge>
             </div>
           </div>
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {mockStats.map((stat, index) => (
+            {stats.map((stat, index) => (
               <Card key={index} className="glass hover-lift transition-smooth">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -80,7 +75,15 @@ const Dashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ChatInterface />
+                {/* If free and no remaining messages, prompt upgrade */}
+                {isFree && typeof remaining === 'number' && remaining <= 0 ? (
+                  <div className="text-center space-y-4">
+                    <p className="text-muted-foreground">You have reached your free message limit.</p>
+                    <Button className="gradient-primary" onClick={() => (window.location.href = '/pricing')}>Upgrade to Premium</Button>
+                  </div>
+                ) : (
+                  <ChatInterface />
+                )}
               </CardContent>
             </Card>
           </div>
@@ -89,14 +92,14 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="glass hover-lift transition-smooth">
               <CardHeader>
-                <CardTitle className="text-lg">Upgrade Plan</CardTitle>
+                <CardTitle className="text-lg">{isFree ? 'Upgrade Plan' : 'Manage Plan'}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground mb-4">
-                  Get unlimited messages and premium features
+                  {isFree ? 'Get unlimited messages and premium features' : 'View and manage your subscription'}
                 </p>
-                <Button className="w-full gradient-primary" onClick={() => window.location.href = '/pricing'}>
-                  View Plans
+                <Button className="w-full gradient-primary" onClick={() => window.location.href = isFree ? '/pricing' : '/profile?tab=subscription'}>
+                  {isFree ? 'View Plans' : 'Manage Subscription'}
                 </Button>
               </CardContent>
             </Card>
@@ -131,8 +134,6 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-      
-      <Footer />
     </div>
   );
 };

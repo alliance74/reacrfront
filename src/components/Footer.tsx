@@ -73,9 +73,7 @@ export const Footer = () => {
           <p className="text-sm text-muted-foreground">
             © 2024 RizzChat. All rights reserved.
           </p>
-          <p className="text-sm text-muted-foreground flex items-center">
-            Made with <Heart className="w-4 h-4 mx-1 text-primary" /> for better connections
-          </p>
+
         </div>
       </div>
     </footer>

@@ -484,9 +484,8 @@ const Profile = () => {
           </Tabs>
         </div>
       </div>
-    );
+    </div>
+  );
 };
-
-
 
 export default Profile;

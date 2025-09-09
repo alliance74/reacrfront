@@ -1,35 +1,43 @@
-import { useState } from "react";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Copy, Users, DollarSign, Share2, Trophy, Gift } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getReferralStats, ReferralItem, ReferralStats } from "@/services/referral.service";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Referrals = () => {
   const { toast } = useToast();
   
-  // Mock user data
-  const [userData] = useState({
-    referralCode: "RIZZ-ALEX-2024",
-    referralLink: "https://rizzchat.com/ref/RIZZ-ALEX-2024",
-    totalReferrals: 12,
-    activeReferrals: 8,
-    totalEarnings: 96.00,
-    thisMonthEarnings: 24.00,
-    pendingEarnings: 16.00
-  });
+  const { currentUser } = useAuth();
+  const [stats, setStats] = useState<ReferralStats | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock referral history
-  const [referralHistory] = useState([
-    { name: "Sarah M.", joinDate: "2024-01-15", status: "Active", earnings: 18.00 },
-    { name: "Mike R.", joinDate: "2024-01-10", status: "Active", earnings: 24.00 },
-    { name: "Emma L.", joinDate: "2024-01-08", status: "Cancelled", earnings: 6.00 },
-    { name: "John D.", joinDate: "2024-01-05", status: "Active", earnings: 30.00 },
-    { name: "Lisa K.", joinDate: "2023-12-28", status: "Active", earnings: 18.00 }
-  ]);
+  const referralLink = useMemo(() => {
+    const code = stats?.referralCode || '';
+    const origin = window.location.origin;
+    return code ? `${origin}/signup?ref=${encodeURIComponent(code)}` : '';
+  }, [stats?.referralCode]);
+
+  useEffect(() => {
+    const run = async () => {
+      if (!currentUser) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const s = await getReferralStats();
+        setStats(s);
+      } catch (e: any) {
+        setError(e.message || 'Failed to load referrals');
+      } finally {
+        setLoading(false);
+      }
+    };
+    run();
+  }, [currentUser]);
 
   const copyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
@@ -44,20 +52,15 @@ const Referrals = () => {
       navigator.share({
         title: 'Join RizzChat and level up your game!',
         text: 'Get AI-powered rizz lines that actually work. Join with my link for exclusive bonuses!',
-        url: userData.referralLink,
+        url: referralLink,
       });
     } else {
-      copyToClipboard(userData.referralLink, "Referral link");
+      if (referralLink) copyToClipboard(referralLink, "Referral link");
     }
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <Header 
-        onSignIn={() => {}} 
-        onGetStarted={() => {}}
-      />
-      
       <div className="pt-20 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
@@ -70,6 +73,9 @@ const Referrals = () => {
               Earn <span className="text-primary font-semibold">$2/month</span> for every friend who subscribes to RizzChat Premium. 
               The more you share, the more you earn!
             </p>
+            {error && (
+              <p className="mt-4 text-sm text-red-500">{error}</p>
+            )}
           </div>
 
           {/* Stats Overview */}
@@ -82,8 +88,8 @@ const Referrals = () => {
                 <Users className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-foreground">{userData.totalReferrals}</div>
-                <p className="text-xs text-success">+2 this month</p>
+                <div className="text-2xl font-bold text-foreground">{stats?.referralCount ?? 0}</div>
+                <p className="text-xs text-muted-foreground">All time</p>
               </CardContent>
             </Card>
 
@@ -95,7 +101,7 @@ const Referrals = () => {
                 <Trophy className="h-4 w-4 text-success" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-foreground">{userData.activeReferrals}</div>
+                <div className="text-2xl font-bold text-foreground">—</div>
                 <p className="text-xs text-muted-foreground">Currently subscribed</p>
               </CardContent>
             </Card>
@@ -108,8 +114,8 @@ const Referrals = () => {
                 <DollarSign className="h-4 w-4 text-warning" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-foreground">${userData.totalEarnings.toFixed(2)}</div>
-                <p className="text-xs text-success">+${userData.thisMonthEarnings.toFixed(2)} this month</p>
+                <div className="text-2xl font-bold text-foreground">${(stats?.referralEarnings ?? 0).toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">Earned from referrals</p>
               </CardContent>
             </Card>
 
@@ -121,7 +127,7 @@ const Referrals = () => {
                 <DollarSign className="h-4 w-4 text-accent" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-foreground">${userData.pendingEarnings.toFixed(2)}</div>
+                <div className="text-2xl font-bold text-foreground">$0.00</div>
                 <p className="text-xs text-muted-foreground">Paid monthly</p>
               </CardContent>
             </Card>
@@ -144,13 +150,13 @@ const Referrals = () => {
                   </label>
                   <div className="flex gap-2">
                     <Input 
-                      value={userData.referralCode} 
+                      value={stats?.referralCode || ''} 
                       readOnly 
                       className="font-mono"
                     />
                     <Button 
                       variant="outline" 
-                      onClick={() => copyToClipboard(userData.referralCode, "Referral code")}
+                      onClick={() => stats?.referralCode && copyToClipboard(stats.referralCode, "Referral code")}
                     >
                       <Copy className="w-4 h-4" />
                     </Button>
@@ -163,13 +169,13 @@ const Referrals = () => {
                   </label>
                   <div className="flex gap-2">
                     <Input 
-                      value={userData.referralLink} 
+                      value={referralLink} 
                       readOnly 
                       className="text-sm"
                     />
                     <Button 
                       variant="outline" 
-                      onClick={() => copyToClipboard(userData.referralLink, "Referral link")}
+                      onClick={() => referralLink && copyToClipboard(referralLink, "Referral link")}
                     >
                       <Copy className="w-4 h-4" />
                     </Button>
@@ -247,20 +253,26 @@ const Referrals = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {referralHistory.map((referral, index) => (
+                    {loading && (
+                      <tr><td className="py-6 text-center text-muted-foreground" colSpan={4}>Loading...</td></tr>
+                    )}
+                    {!loading && stats?.recentReferrals && stats.recentReferrals.length === 0 && (
+                      <tr><td className="py-6 text-center text-muted-foreground" colSpan={4}>No referrals yet. Share your link to get started!</td></tr>
+                    )}
+                    {!loading && stats?.recentReferrals?.map((ref, index) => (
                       <tr key={index} className="border-b border-border/10">
-                        <td className="py-3 text-foreground font-medium">{referral.name}</td>
-                        <td className="py-3 text-muted-foreground">{referral.joinDate}</td>
+                        <td className="py-3 text-foreground font-medium">{ref.email}</td>
+                        <td className="py-3 text-muted-foreground">{new Date(ref.date).toLocaleDateString()}</td>
                         <td className="py-3">
                           <Badge 
-                            variant={referral.status === "Active" ? "default" : "secondary"}
-                            className={referral.status === "Active" ? "bg-success/10 text-success" : ""}
+                            variant={ref.status === 'completed' ? 'default' : 'secondary'}
+                            className={ref.status === 'completed' ? 'bg-success/10 text-success' : ''}
                           >
-                            {referral.status}
+                            {ref.status}
                           </Badge>
                         </td>
                         <td className="py-3 text-right text-foreground font-medium">
-                          ${referral.earnings.toFixed(2)}
+                          $2.00
                         </td>
                       </tr>
                     ))}
@@ -271,8 +283,6 @@ const Referrals = () => {
           </Card>
         </div>
       </div>
-      
-      <Footer />
     </div>
   );
 };
