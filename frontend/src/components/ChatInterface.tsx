@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button-variants";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +22,7 @@ export const ChatInterface = () => {
   const [imageData, setImageData] = useState<{ base64: string; type: string } | null>(null);
   const [style, setStyle] = useState("Confident"); 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const { toast } = useToast();
 
   // Map of display names to backend style values
@@ -29,7 +30,7 @@ export const ChatInterface = () => {
     "Confident": "confident",
     "Flirty": "flirty",
     "Funny": "funny",
-    "Chill": "smooth" // Map 'Chill' to 'smooth' which is the equivalent in the backend
+    "Chill": "smooth"
   };
 
   const rizzStyles = [
@@ -38,6 +39,41 @@ export const ChatInterface = () => {
     { name: "Funny", icon: Flame, color: "from-orange-500 to-yellow-500" },
     { name: "Chill", icon: Zap, color: "from-blue-500 to-cyan-500" },
   ];
+
+  // Load chat history on mount
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const token = await getAuthToken();
+        if (!token) return;
+
+        const resp = await fetch(`${API_URL}/chat/history?limit=100`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!resp.ok) throw new Error("Failed to fetch chat history");
+
+        const data = await resp.json();
+        const loadedMessages: Message[] = data.messages.map((m: any) => ({
+          id: m.id,
+          type: m.response ? "ai" : "user",
+          content: m.response || m.content,
+          timestamp: new Date(m.timestamp),
+        }));
+
+        setMessages(loadedMessages.reverse());
+      } catch (e: any) {
+        console.error("Error loading chat history:", e);
+      }
+    };
+
+    fetchHistory();
+  }, []);
+
+  // Scroll to bottom on messages update
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() && !imageData) return;
@@ -59,22 +95,16 @@ export const ChatInterface = () => {
         return;
       }
 
-      // Convert display style to backend style value
       const backendStyle = styleMap[style] || 'confident';
       const payload: any = { 
         message: inputMessage, 
         style: backendStyle,
-        // Add imageType if image is provided
         ...(imageData?.base64 && { 
           imageBase64: imageData.base64,
-          imageType: imageData.type || 'image/jpeg' // Default to jpeg if type not specified
+          imageType: imageData.type || 'image/jpeg'
         })
       };
 
-      console.log('Sending request to:', `${API_URL}/chat/send`);
-      console.log('Request payload:', JSON.stringify(payload, null, 2));
-      console.log('Auth token present:', !!token);
-      
       const resp = await fetch(`${API_URL}/chat/send`, {
         method: 'POST',
         headers: {
@@ -84,23 +114,14 @@ export const ChatInterface = () => {
         credentials: 'include',
         body: JSON.stringify(payload)
       });
-      
-      console.log('Response status:', resp.status);
+
       if (!resp.ok) {
         let errorMessage = 'Failed to send message';
         try {
           const errorData = await resp.json();
           errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          const errorText = await resp.text();
-          errorMessage = errorText || errorMessage;
-        }
-        console.error('Error response:', errorMessage);
-        toast({ 
-          title: 'Error', 
-          description: errorMessage, 
-          variant: 'destructive' 
-        });
+        } catch (e) {}
+        toast({ title: 'Error', description: errorMessage, variant: 'destructive' });
         setIsLoading(false);
         return;
       }
@@ -114,7 +135,6 @@ export const ChatInterface = () => {
       };
       setMessages(prev => [...prev, aiMessage]);
     } catch (e: any) {
-      console.error('Send message error:', e);
       toast({ title: 'Error', description: e.message || 'Unexpected error', variant: 'destructive' });
     } finally {
       setIsLoading(false);
@@ -130,7 +150,6 @@ export const ChatInterface = () => {
   };
 
   const onUploadClick = () => fileInputRef.current?.click();
-
   const toBase64 = (file: File) => new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve((reader.result as string).split(',')[1] || '');
@@ -185,6 +204,7 @@ export const ChatInterface = () => {
             </div>
           ))
         )}
+        <div ref={messagesEndRef}></div>
 
         {isLoading && (
           <div className="flex justify-start">
