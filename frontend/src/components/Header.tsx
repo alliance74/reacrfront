@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { MessageSquare, User, Menu, X, LogOut } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
 
@@ -9,16 +9,24 @@ export const Header = () => {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    document.body.style.overflow = isMenuOpen ? "hidden" : "auto";
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [isMenuOpen]);
+
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/');
+      navigate("/");
     } catch (error) {
-      console.error('Failed to log out', error);
+      console.error("Failed to log out", error);
     }
   };
-  
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/20 backdrop-blur-xl">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -35,17 +43,29 @@ export const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
-            <Link to="/#features" className="text-muted-foreground hover:text-foreground transition-smooth">
+            <Link
+              to="/#features"
+              className="text-muted-foreground hover:text-foreground transition-smooth"
+            >
               Features
             </Link>
-            <Link to="/pricing" className="text-muted-foreground hover:text-foreground transition-smooth">
+            <Link
+              to="/pricing"
+              className="text-muted-foreground hover:text-foreground transition-smooth"
+            >
               Pricing
             </Link>
-            <Link to="/referrals" className="text-muted-foreground hover:text-foreground transition-smooth">
+            <Link
+              to="/referrals"
+              className="text-muted-foreground hover:text-foreground transition-smooth"
+            >
               Referrals
             </Link>
             {currentUser && (
-              <Link to="/dashboard" className="text-muted-foreground hover:text-foreground transition-smooth">
+              <Link
+                to="/dashboard"
+                className="text-muted-foreground hover:text-foreground transition-smooth"
+              >
                 Dashboard
               </Link>
             )}
@@ -56,10 +76,18 @@ export const Header = () => {
             <ThemeToggle />
             {currentUser ? (
               <>
-                <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/dashboard")}
+                >
                   Dashboard
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => navigate('/profile')}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/profile")}
+                >
                   <User className="w-4 h-4 mr-2" />
                   Profile
                 </Button>
@@ -70,10 +98,19 @@ export const Header = () => {
               </>
             ) : (
               <>
-                <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/login")}
+                >
                   Sign In
                 </Button>
-                <Button variant="default" size="sm" onClick={() => navigate('/signup')} className="bg-primary hover:bg-primary/90">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => navigate("/signup")}
+                  className="bg-primary hover:bg-primary/90"
+                >
                   Get Started
                 </Button>
               </>
@@ -85,6 +122,8 @@ export const Header = () => {
             variant="ghost"
             size="icon"
             className="relative z-50 md:hidden"
+            aria-label="Toggle menu"
+            aria-expanded={isMenuOpen}
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -93,26 +132,39 @@ export const Header = () => {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="fixed inset-0 bg-pink backdrop-blur-sm z-40 pt-16">
+          <div className="fixed inset-0 bg-background/95 z-50 pt-8 shadow-lg border-t border-border/20">
             <div className="container mx-auto px-4 py-6 space-y-6">
-              <nav className="flex flex-col space-y-4">
+              {/* Close Button inside */}
+              <div className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <X className="h-6 w-6" />
+                </Button>
+              </div>
+
+              {/* Navigation */}
+              <nav className="flex flex-col space-y-4 bg-background p-4 rounded-xl border border-border/20 shadow-md">
                 <Link
                   to="/#features"
-                  className="text-lg py-2 px-4 rounded-lg hover:bg-accent transition-smooth block"
+                  className="text-lg py-2 px-2 hover:text-primary transition-colors text-foreground font-medium"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Features
                 </Link>
                 <Link
                   to="/pricing"
-                  className="text-lg py-2 px-4 rounded-lg hover:bg-accent transition-smooth block"
+                  className="text-lg py-2 px-2 hover:text-primary transition-colors text-foreground font-medium"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Pricing
                 </Link>
                 <Link
                   to="/referrals"
-                  className="text-lg py-2 px-4 rounded-lg hover:bg-accent transition-smooth block"
+                  className="text-lg py-2 px-2 hover:text-primary transition-colors text-foreground font-medium"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Referrals
@@ -120,7 +172,7 @@ export const Header = () => {
                 {currentUser && (
                   <Link
                     to="/dashboard"
-                    className="text-lg py-2 px-4 rounded-lg hover:bg-accent transition-smooth block"
+                    className="text-lg py-2 px-2 hover:text-primary transition-colors text-foreground font-medium"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Dashboard
@@ -129,7 +181,7 @@ export const Header = () => {
                 {currentUser && (
                   <Link
                     to="/profile"
-                    className="text-lg py-2 px-4 rounded-lg hover:bg-accent transition-smooth block"
+                    className="text-lg py-2 px-2 hover:text-primary transition-colors text-foreground font-medium"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     Profile
@@ -137,6 +189,7 @@ export const Header = () => {
                 )}
               </nav>
 
+              {/* Auth Actions */}
               <div className="pt-4 border-t border-border/20">
                 <div className="flex flex-col space-y-3">
                   {currentUser ? (
@@ -147,7 +200,7 @@ export const Header = () => {
                       onClick={async () => {
                         await logout();
                         setIsMenuOpen(false);
-                        navigate('/');
+                        navigate("/");
                       }}
                     >
                       <LogOut className="w-4 h-4 mr-2" />
@@ -160,7 +213,7 @@ export const Header = () => {
                         size="lg"
                         className="w-full"
                         onClick={() => {
-                          navigate('/login');
+                          navigate("/login");
                           setIsMenuOpen(false);
                         }}
                       >
@@ -171,7 +224,7 @@ export const Header = () => {
                         size="lg"
                         className="w-full bg-primary hover:bg-primary/90"
                         onClick={() => {
-                          navigate('/signup');
+                          navigate("/signup");
                           setIsMenuOpen(false);
                         }}
                       >

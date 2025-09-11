@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button-variants";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import  {HeroSection}  from "./HeroSection";
+import { HeroSection } from "./HeroSection";
 import { 
   MessageSquare, 
   Sparkles, 
@@ -12,16 +12,41 @@ import {
   CheckCircle,
   ArrowRight,
   Users,
-  TrendingUp
+  TrendingUp,
+  LogIn,
+  User
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
+import { useState } from "react";
 
 import heroImage from "@/assets/hero-image.jpg";
 
 interface LandingPageProps {
-  onGetStarted: () => void;
+  onGetStarted?: () => void;
 }
 
 export const LandingPage = ({ onGetStarted }: LandingPageProps) => {
+  const { currentUser } = useAuth();
+  const { subscription } = useSubscription();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const isPremium = subscription?.status === 'active' || subscription?.status === 'trialing';
+
+  const handleGetStarted = () => {
+    window.location.href = '/login';
+  };
+
+  const getButtonIcon = () => {
+    return <LogIn className="w-5 h-5 ml-2" />;
+  };
+
+  const getButtonText = () => {
+    return 'Get Started';
+  };
   const features = [
     {
       icon: <Sparkles className="w-6 h-6" />,
@@ -163,8 +188,15 @@ export const LandingPage = ({ onGetStarted }: LandingPageProps) => {
                   </li>
                 </ul>
                 
-                <Button variant="glass" size="lg" className="w-full" onClick={onGetStarted}>
-                  Get Started Free
+                <Button 
+                  variant="glass" 
+                  size="lg" 
+                  className="w-full" 
+                  onClick={handleGetStarted}
+                  disabled={loading}
+                >
+                  {getButtonText()}
+                  {!loading && <ArrowRight className="w-5 h-5 ml-2" />}
                 </Button>
               </div>
             </Card>
@@ -210,9 +242,15 @@ export const LandingPage = ({ onGetStarted }: LandingPageProps) => {
                   </li>
                 </ul>
                 
-                <Button variant="hero" size="lg" className="w-full" onClick={onGetStarted}>
-                  <Crown className="w-5 h-5 mr-2" />
-                  Upgrade to Premium
+                <Button 
+                  variant="hero" 
+                  size="lg" 
+                  className="w-full" 
+                  onClick={handleGetStarted}
+                  disabled={loading}
+                >
+                  {!loading && <Crown className="w-5 h-5 mr-2" />}
+                  {getButtonText()}
                 </Button>
               </div>
             </Card>
@@ -230,9 +268,15 @@ export const LandingPage = ({ onGetStarted }: LandingPageProps) => {
             <p className="text-xl text-muted-foreground mb-8">
               Join thousands who've already leveled up their conversation game
             </p>
-            <Button variant="hero" size="xl" onClick={onGetStarted}>
-              Start Your Free Trial
-              <TrendingUp className="w-5 h-5 ml-2" />
+            <Button 
+              variant="hero" 
+              size="xl" 
+              onClick={handleGetStarted}
+              disabled={loading}
+              className="w-full sm:w-auto min-w-[150px] sm:min-w-[200px] text-sm sm:text-base px-4 py-6 sm:px-6 sm:py-3"
+            >
+              {getButtonText()}
+              {getButtonIcon()}
             </Button>
           </Card>
         </div>

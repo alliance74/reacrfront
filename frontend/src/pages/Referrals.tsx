@@ -3,18 +3,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Copy, Users, DollarSign, Share2, Trophy, Gift } from "lucide-react";
+import { Copy, Users, DollarSign, Share2, Trophy, Gift, Crown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getReferralStats, ReferralItem, ReferralStats } from "@/services/referral.service";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
+import { useNavigate } from "react-router-dom";
 
 const Referrals = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const { currentUser } = useAuth();
+  const { subscription } = useSubscription();
   const [stats, setStats] = useState<ReferralStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isPremium = subscription?.status === 'active' || subscription?.status === 'trialing';
 
   const referralLink = useMemo(() => {
     const code = stats?.referralCode || '';
@@ -59,12 +65,53 @@ const Referrals = () => {
     }
   };
 
+  if (!isPremium) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="pt-32 pb-16 text-center px-4">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-8 rounded-2xl border border-primary/20">
+              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Crown className="w-10 h-10 text-primary" />
+              </div>
+              <h2 className="text-3xl font-bold text-foreground mb-4">Premium Feature</h2>
+              <p className="text-lg text-muted-foreground mb-8">
+                Our referral program is exclusively available to RizzChat Premium members. Upgrade now to start earning rewards for every friend you refer!
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  size="lg" 
+                  onClick={() => navigate('/pricing')}
+                  className="px-8"
+                >
+                  Upgrade to Premium
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  onClick={() => navigate(-1)}
+                  className="px-8"
+                >
+                  Go Back
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="pt-20 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-medium mb-4">
+              <Crown className="w-4 h-4 mr-2" />
+              Premium Member
+            </div>
             <h1 className="text-4xl font-bold text-foreground mb-4">
               <Gift className="w-10 h-10 inline-block mr-3 text-primary" />
               Referral Program

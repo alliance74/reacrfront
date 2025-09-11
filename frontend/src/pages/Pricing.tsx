@@ -46,14 +46,10 @@ const Pricing = () => {
       description: "Unlimited rizz for serious charmers",
       billingCycle: 'monthly',
       features: [
-        "Unlimited AI responses",
-        "All 4 response styles",
-        "Priority chat processing",
-        "Screenshot analysis",
-        "Chat history & favorites",
-        "Premium support",
-        "Early access to new features",
-        "Referral earnings program"
+        "Unlimited messages",
+        "Priority support",
+        "Access to all premium features",
+        "Cancel anytime"
       ],
       credits: -1, // -1 for unlimited
       limits: {
@@ -71,36 +67,47 @@ const Pricing = () => {
     return price === -1 ? 'Unlimited' : `$${price.toFixed(2)}`;
   };
 
+  const [isLoading, setIsLoading] = useState(true);
+
   // Fetch plans from the server
   useEffect(() => {
     const fetchPlans = async () => {
       try {
+        setIsLoading(true);
         const { plans, currentPlan } = await getSubscriptionPlans();
-        setPlansData(plans);
+        setPlansData(plans || defaultPlans);
+        
         if (currentPlan) {
           setCurrentPlan(currentPlan);
         }
       } catch (error) {
         console.error('Failed to fetch plans:', error);
         setPlansData(defaultPlans);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     fetchPlans();
   }, []);
 
-  // Use server plans or fallback to default
-  const plans = plansData.length > 0 ? plansData : defaultPlans;
+  // Use plansData if available, otherwise use defaultPlans
+  const plansToRender = plansData.length > 0 ? plansData : defaultPlans;
   
   // Add display properties to plans
-  const plansWithDisplayProps = plans.map(plan => ({
-    ...plan,
-    displayPrice: formatPrice(plan.price),
-    displayPeriod: plan.billingCycle === 'monthly' ? '/month' : '/year',
-    isPopular: plan.id === 'premium',
-    buttonText: plan.id === 'free' ? 'Get Started Free' : 'Start Premium',
-    showDiscount: plan.id === 'premium' && plan.billingCycle === 'monthly'
-  }));
+  const plansWithDisplayProps = plansToRender.map(plan => {
+    const isPremium = plan.id === 'premium';
+    return {
+      ...plan,
+      displayPrice: formatPrice(plan.price),
+      displayPeriod: '',
+      isPopular: isPremium,
+      buttonText: plan.id === 'free' ? 'Get Started Free' : 'Get Premium',
+      showDiscount: isPremium && plan.billingCycle === 'monthly',
+      originalPrice: isPremium ? 19.98 : 0,
+      price: plan.price || (isPremium ? 9.99 : 0)
+    };
+  });
 
   const handleSubscribe = async (planId: string) => {
     if (!currentUser) {
@@ -194,17 +201,17 @@ const Pricing = () => {
                   <CardTitle className="text-2xl font-bold text-foreground">
                     {plan.name}
                   </CardTitle>
-                  <div className="flex items-baseline justify-center gap-2">
-                    <span className="text-4xl font-bold text-primary">
-                      {plan.displayPrice}
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-3xl font-bold text-primary">
+                      ${plan.price.toFixed(2)}
                     </span>
-                    {plan.price > 0 && plan.billingCycle === 'monthly' && (
+                    {plan.originalPrice > 0 && (
                       <span className="text-lg text-muted-foreground line-through">
-                        ${(plan.price * 2).toFixed(2)}
+                        ${plan.originalPrice.toFixed(2)}
                       </span>
                     )}
                     <span className="text-muted-foreground">
-                      {plan.displayPeriod}
+                      /month
                     </span>
                   </div>
                   {plan.showDiscount && (

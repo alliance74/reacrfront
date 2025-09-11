@@ -60,7 +60,41 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Main Layout Component
+// Layout without footer for Dashboard
+const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
+  // Check for Stripe redirect on initial load
+  useEffect(() => {
+    const checkRedirect = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const sessionId = urlParams.get('session_id');
+      
+      if (sessionId) {
+        try {
+          const success = await checkStripeRedirect();
+          if (success) {
+            // Redirect to profile page after successful subscription
+            window.location.href = '/profile?tab=subscription';
+          }
+        } catch (error) {
+          console.error('Error handling Stripe redirect:', error);
+        }
+      }
+    };
+
+    checkRedirect();
+  }, []);
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      <Header />
+      <main className="flex-1 pt-16">
+        {children}
+      </main>
+    </div>
+  );
+};
+
+// Main Layout Component with footer
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
   // Check for Stripe redirect on initial load
   useEffect(() => {
@@ -115,9 +149,9 @@ const AppRoutes = () => (
     
     <Route path="/dashboard" element={
       <ProtectedRoute>
-        <MainLayout>
+        <DashboardLayout>
           <Dashboard />
-        </MainLayout>
+        </DashboardLayout>
       </ProtectedRoute>
     } />
     
