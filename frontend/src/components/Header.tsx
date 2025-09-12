@@ -66,7 +66,7 @@ export const Header = () => {
                 to="/dashboard"
                 className="text-muted-foreground hover:text-foreground transition-smooth"
               >
-                Dashboard
+                Chat
               </Link>
             )}
           </nav>
@@ -81,7 +81,7 @@ export const Header = () => {
                   size="sm"
                   onClick={() => navigate("/dashboard")}
                 >
-                  Dashboard
+                  Chat
                 </Button>
                 <Button
                   variant="ghost"
@@ -175,7 +175,7 @@ export const Header = () => {
                     className="text-lg py-2 px-2 hover:text-primary transition-colors text-foreground font-medium"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    Dashboard
+                    Chat
                   </Link>
                 )}
                 {currentUser && (
