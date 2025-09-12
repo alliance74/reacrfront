@@ -15,12 +15,22 @@ const Referrals = () => {
   const navigate = useNavigate();
   
   const { currentUser } = useAuth();
-  const { subscription } = useSubscription();
+  const { subscription, isLoading: subscriptionLoading } = useSubscription();
   const [stats, setStats] = useState<ReferralStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isPremium = subscription?.status === 'active' || subscription?.status === 'trialing';
+  // Debug log to check subscription data
+  useEffect(() => {
+    console.log('Subscription data:', subscription);
+  }, [subscription]);
+
+  // Check if user has a premium subscription
+  const isPremium = useMemo(() => {
+    if (!subscription) return false;
+    // Only check plan ID since status might not be properly set
+    return (subscription.planId === 'premium' || subscription.planId === 'pro');
+  }, [subscription]);
 
   const referralLink = useMemo(() => {
     const code = stats?.referralCode || '';
@@ -64,6 +74,14 @@ const Referrals = () => {
       if (referralLink) copyToClipboard(referralLink, "Referral link");
     }
   };
+
+  if (loading || subscriptionLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   if (!isPremium) {
     return (
