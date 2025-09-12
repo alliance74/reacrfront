@@ -286,10 +286,6 @@ const Pricing = () => {
                   a: "Yes! You can cancel your subscription at any time. You'll continue to have access to premium features until the end of your billing period."
                 },
                 {
-                  q: "Do you offer refunds?",
-                  a: "We offer a 7-day money-back guarantee. If you're not satisfied with RizzChat Premium, contact us for a full refund."
-                },
-                {
                   q: "What happens to my chat history if I downgrade?",
                   a: "Your chat history is always saved. If you downgrade, you'll still be able to view your previous conversations, but you'll be limited to the free plan's message quota."
                 },
