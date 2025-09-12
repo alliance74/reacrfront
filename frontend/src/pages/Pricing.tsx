@@ -20,20 +20,20 @@ const Pricing = () => {
   const defaultPlans: SubscriptionPlan[] = [
     {
       id: "free",
-      name: "Free Plan",
+      name: "Free",
       price: 0,
       description: "Perfect for trying out RizzChat",
       billingCycle: 'monthly',
       features: [
-        "10 AI-generated responses",
-        "4 response styles",
-        "Basic chat interface",
-        "Community support"
+        "10 free messages",
+        "Basic support",
+        "Access to free features"
       ],
       credits: 10,
       limits: {
         messages: 10,
-        responseStyles: 4
+        history: 24,
+        responseLength: 500
       },
       stripe: {
         priceId: 'price_free'
@@ -41,7 +41,7 @@ const Pricing = () => {
     },
     {
       id: "premium",
-      name: "Premium Plan",
+      name: "Premium",
       price: 9.99,
       description: "Unlimited rizz for serious charmers",
       billingCycle: 'monthly',
@@ -54,13 +54,16 @@ const Pricing = () => {
       credits: -1, // -1 for unlimited
       limits: {
         messages: -1, // -1 for unlimited
-        responseStyles: -1
+        history: 168,
+        responseLength: 1000
       },
       stripe: {
-        priceId: import.meta.env.VITE_STRIPE_PREMIUM_PRICE_ID
+        priceId: import.meta.env.VITE_STRIPE_PREMIUM_PRICE_ID,
+        productId: 'prod_T1CsGdiSNCRV9L'
       }
     }
   ];
+  
   
   // Helper function to format price for display
   const formatPrice = (price: number) => {
@@ -75,7 +78,27 @@ const Pricing = () => {
       try {
         setIsLoading(true);
         const { plans, currentPlan } = await getSubscriptionPlans();
-        setPlansData(plans || defaultPlans);
+        
+        // Ensure plans data is consistent with our defaults
+        const processedPlans = (plans || defaultPlans).map(plan => {
+          // For premium plan, ensure unlimited messages are shown correctly
+          if (plan.id === 'premium') {
+            return {
+              ...plan,
+              features: plan.features.map(f => 
+                typeof f === 'string' && f.toLowerCase().includes('message') ? 'Unlimited messages' : f
+              ),
+              credits: -1,
+              limits: {
+                ...plan.limits,
+                messages: -1
+              }
+            };
+          }
+          return plan;
+        });
+        
+        setPlansData(processedPlans);
         
         if (currentPlan) {
           setCurrentPlan(currentPlan);
