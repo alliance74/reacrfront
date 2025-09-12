@@ -13,7 +13,9 @@ export interface SubscriptionPlan {
   };
   stripe: {
     priceId: string;
+    productId?: string;
   };
+  productId?: string;
 }
 
 export interface CurrentSubscription {
